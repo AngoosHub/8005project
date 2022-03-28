@@ -58,21 +58,21 @@ def read_configuration():
 
 def server_thread(sock):
     conn, addr = sock.accept()
-    print('Client Connected: ', conn.getpeername())
-    print('Client Addr: ', addr)
+    print('Client Connected: \t\t\t\t', conn.getpeername())
     while True:
         data = conn.recv(1024)
         if data:
-            print('Echo from: ', conn.getpeername())
+            print(conn.getpeername(), ' Sent:', data.decode('utf8'))
+            print("Server echoing: \t\t\t\t", data.decode('utf8'))
             conn.sendall(data)
         else:
-            print('Closed Connection: ', conn.getpeername())
+            print('Closed Connection: \t\t\t\t', conn.getpeername(), '\n')
             conn.close()
             break
 
 
 def start_server():
-    print("Starting Server.")
+    print("Starting Server.\n")
     configuration = read_configuration()
     IPv4_HOST = configuration['server_address_IPv4']
     IPv6_HOST = configuration['server_address_IPv6']
@@ -81,27 +81,42 @@ def start_server():
     TLS_PORT = configuration['server_port_TLS']
 
     try:
+        addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+
         with socket(AF_INET, SOCK_STREAM) as IPv4_sock, \
-                socket(AF_INET6, SOCK_STREAM) as IPv6_sock, \
+                socket(family, socktype, proto) as IPv6_sock, \
                 socket(AF_INET, SOCK_STREAM) as sock:
 
             IPv4_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            IPv6_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            IPv4_sock.bind((IPv4_HOST, IPv4_PORT))
+            IPv4_sock.listen(10)
+            start_new_thread(server_thread, (IPv4_sock,))
 
+            IPv6_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            IPv6_sock.bind(sockaddr)
+            IPv6_sock.listen(10)
+            start_new_thread(server_thread, (IPv6_sock,))
+
+            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             TLS_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
                                        certfile="cert.pem", keyfile="cert.pem",)
-
-            IPv4_sock.bind((IPv4_HOST, IPv4_PORT))
-            IPv6_sock.bind((IPv4_HOST, IPv6_PORT))
             TLS_sock.bind((IPv4_HOST, TLS_PORT))
-            IPv4_sock.listen(10)
-            IPv6_sock.listen(10)
             TLS_sock.listen(10)
+            #start_new_thread(server_thread, (TLS_sock,))
 
-            start_new_thread(server_thread, (IPv4_sock,))
-            start_new_thread(server_thread, (IPv6_sock,))
-            start_new_thread(server_thread, (TLS_sock,))
+            conn, addr = TLS_sock.accept()
+            print('Client Connected: \t\t\t\t', conn.getpeername())
+            while True:
+                data = conn.recv(1024)
+                if data:
+                    print(conn.getpeername(), ' Sent:', data.decode('utf8'))
+                    print("Server echoing: \t\t\t\t", data.decode('utf8'))
+                    conn.sendall(data)
+                else:
+                    print('Closed Connection: \t\t\t\t', conn.getpeername())
+                    conn.close()
+                    break
 
     except error as msg:
         print('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
