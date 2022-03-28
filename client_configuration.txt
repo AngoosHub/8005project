@@ -1,0 +1,7 @@
+# CLIENT CONFIGURATION FILE
+#
+server_address_IPv4=192.168.12.115
+server_address_IPv6=fe80::876:4cd5:19bf:8d17
+server_port_IPv4=8006
+server_port_IPv6=8007
+server_port_TLS=8008
