@@ -34,7 +34,8 @@ def read_configuration():
         'server_address_IPv6': '',
         'server_port_IPv4': 0,
         'server_port_IPv6': 0,
-        'server_port_TLS': 0,
+        'server_port_TLS_IPv4': 0,
+        'server_port_TLS_IPv6': 0,
         'echo_string': '',
     }
 
@@ -71,9 +72,13 @@ def start_client():
     configuration = read_configuration()
     IPv4_HOST = configuration['server_address_IPv4']
     IPv6_HOST = configuration['server_address_IPv6']
+
     IPv4_PORT = configuration['server_port_IPv4']
     IPv6_PORT = configuration['server_port_IPv6']
-    TLS_PORT = configuration['server_port_TLS']
+
+    TLS_IPv4_PORT = configuration['server_port_TLS_IPv4']
+    TLS_IPv6_PORT = configuration['server_port_TLS_IPv6']
+
     echo_string = configuration['echo_string']
 
     try:
@@ -95,14 +100,28 @@ def start_client():
             print(sock_name)
             client_echo(sock, echo_string)
 
-        # TLS Socket Echo Request.
+        # TLS IPv4 Socket Echo Request.
         with socket(AF_INET, SOCK_STREAM) as my_sock:
             my_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
                                    certfile="cert.pem", keyfile="cert.pem", )
 
-            sock.connect((IPv4_HOST, TLS_PORT))
-            print(f"\nTLS connection to Server:\t IP = {IPv4_HOST}, Port = {TLS_PORT}")
+            sock.connect((IPv4_HOST, TLS_IPv4_PORT))
+            print(f"\nTLS IPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {TLS_IPv4_PORT}")
+            client_echo(sock, echo_string)
+
+        # TLS IPv6 Socket Echo Request.
+        addrinfo = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+        with socket(family, socktype, proto) as my_sock:
+            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
+                                   certfile="cert.pem", keyfile="cert.pem", )
+
+            sock.connect(sockaddr)
+            sock_name = sock.getsockname()
+            print(f"\nTLS IPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {TLS_IPv6_PORT}")
+            print(sock_name)
             client_echo(sock, echo_string)
 
     except error as msg:
