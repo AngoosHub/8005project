@@ -29,9 +29,7 @@ class ServerSummary:
     def __init__(self, host_ip):
         self.host_ip = host_ip
         self.total_client_conns = 0
-        self.total_client_echo_req = 0
-        self.total_data_recv = 0
-        self.total_data_sent = 0
+        self.total_data_forward = 0
 
 
 class ClientSocketInfo:
@@ -42,9 +40,18 @@ class ClientSocketInfo:
     def __init__(self, sock):
         self.sock = sock
         self.echo_request = ''
-        self.total_requests = 0
-        self.total_data_recv = 0
-        self.total_data_sent = 0
+        self.total_data_forward = 0
+
+class PortForward:
+    """
+    Holds information for a port forward entry of IP:Port -> IP:Port.
+    """
+
+    def __init__(self, src_ip, src_port, fw_ip, fw_port):
+        self.src_ip = src_ip
+        self.src_port = src_port
+        self.fw_ip = fw_ip
+        self.fw_port = fw_port
 
 
 LOG_PATH = "server_log.txt"
@@ -56,7 +63,9 @@ configuration = {
     'server_port': '',
     'server_listen_backlog': 0
 }
+port_forward = {
 
+}
 
 def read_configuration():
     """
@@ -82,6 +91,12 @@ def read_configuration():
                         exit()
 
 
+def create_listening_socket():
+    print()
+    # addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+    # (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+
+
 def start_epoll_server():
     """
     Main Epoll Server Function
@@ -97,6 +112,7 @@ def start_epoll_server():
 
     :return: None
     """
+    # For loop for sockets, pass to epoll. change epoll to accept list of sockets for registering
     with socket_context_manager(AF_INET, SOCK_STREAM) as server, epoll_context_manager(server.fileno(),
                                                                                        select.EPOLLIN) as epoll:
 
@@ -164,11 +180,7 @@ def receive_handler(sockdes, client_sockets, epoll):
     data = conn.recv(BUFFER_SIZE).decode('utf-8')
     # Check if connection still open
     if data:
-        client_sockets[sockdes].total_requests += 1
-        client_sockets[sockdes].total_data_recv += len(data)
         client_sockets[sockdes].echo_request = data
-        clients_summary[conn.getpeername()[0]].total_client_echo_req += 1  # log
-        clients_summary[conn.getpeername()[0]].total_data_recv += len(data)  # log
         epoll.modify(sockdes, select.EPOLLOUT)
     else:
         print_connection_results(sockdes, client_sockets)
@@ -188,8 +200,8 @@ def send_handler(sockdes, client_sockets, epoll):
     """
     client_sockets[sockdes].sock.send(client_sockets[sockdes].echo_request.encode('utf-8'))
     data_len = len(client_sockets[sockdes].echo_request)
-    clients_summary[client_sockets[sockdes].sock.getpeername()[0]].total_data_sent += data_len  # log
-    client_sockets[sockdes].total_data_sent += data_len
+    clients_summary[client_sockets[sockdes].sock.getpeername()[0]].total_data_forward += data_len  # log
+    client_sockets[sockdes].total_data_forward += data_len
     epoll.modify(sockdes, select.EPOLLIN)
 
 
@@ -209,9 +221,7 @@ def print_summary():
         log_data += (
             f"\n[{client.host_ip}]:\n"
             f"    Total connections = {client.total_client_conns}\n"
-            f"    Total echo requests = {client.total_client_echo_req}\n"
-            f"    Total data recv = {client.total_data_recv}\n"
-            f"    Total data sent = {client.total_data_sent}\n"
+            f"    Total data forward = {client.total_data_forward}\n"
         )
     log_data += '------------------------------------------------------------------\n'
     print(log_data)
@@ -228,9 +238,7 @@ def print_connection_results(sockdes, client_sockets):
     """
     log_data = (
         f"[{client_sockets[sockdes].sock.getpeername()}] Connection closed, results:\n"
-        f"    Total echo requests = {client_sockets[sockdes].total_requests}\n"
-        f"    Total data recv = {client_sockets[sockdes].total_data_sent}\n"
-        f"    Total data sent = {client_sockets[sockdes].total_data_recv}\n"
+        f"    Total data forward = {client_sockets[sockdes].total_data_forward}\n"
     )
     print(log_data)
     with open(file=LOG_PATH, mode="a", encoding='utf-8') as file:

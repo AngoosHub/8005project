@@ -90,7 +90,7 @@ def start_client():
             client_echo(sock, echo_string)
 
         # IPv6 Socket Echo Request.
-        addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        addrinfo = getaddrinfo(IPv4_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
         (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
         with socket(family, socktype, proto) as sock:
             sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -111,7 +111,7 @@ def start_client():
             client_echo(sock, echo_string)
 
         # TLS IPv6 Socket Echo Request.
-        addrinfo = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        addrinfo = getaddrinfo(IPv4_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
         (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
         with socket(family, socktype, proto) as my_sock:
             sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
