@@ -284,7 +284,7 @@ def send_handler(sockdes, client_sockets, epoll):
     :return: None
     """
     # client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
-    client_sockets[sockdes].src_sock.write(client_sockets[sockdes].echo_request)
+    client_sockets[sockdes].src_sock.sendall(client_sockets[sockdes].echo_request)
     epoll.modify(sockdes, select.EPOLLIN)
 
 
