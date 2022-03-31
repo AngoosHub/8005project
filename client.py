@@ -60,9 +60,9 @@ def read_configuration():
 
 
 def client_echo(conn, echo):
-    conn.sendall(echo.encode('utf8'))
+    conn.write(echo.encode('utf8'))
     print("Sending String to Server: \t", echo)
-    data = conn.recv(1024)
+    data = conn.read(1024)
     if data:
         print("Reply from Server: \t\t\t", data.decode('utf8'))
 

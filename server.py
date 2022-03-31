@@ -61,11 +61,11 @@ def server_thread(sock):
     conn, addr = sock.accept()
     print('Client Connected: \t\t\t\t', conn.getpeername())
     while True:
-        data = conn.recv(1024)
+        data = conn.read(1024)
         if data:
             print(conn.getpeername(), ' Sent:', data.decode('utf8'))
             print("Server echoing: \t\t\t\t", data.decode('utf8'))
-            conn.sendall(data)
+            conn.write(data)
         else:
             print('Closed Connection: \t\t\t\t', conn.getpeername(), '\n')
             conn.close()
@@ -101,10 +101,10 @@ def start_server():
             # print("Listening on: ", IPv4_sock.getsockname())
             # start_new_thread(server_thread, (IPv4_sock,))
             #
-            # IPv6_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            # IPv6_sock.bind(sockaddr)
-            # IPv6_sock.listen(10)
-            # print("Listening on: ", IPv6_sock.getsockname())
+            IPv6_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            IPv6_sock.bind(sockaddr)
+            IPv6_sock.listen(10)
+            print("Listening on: ", IPv6_sock.getsockname())
             # start_new_thread(server_thread, (IPv6_sock,))
 
             sock1.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -121,8 +121,9 @@ def start_server():
             TLS_IPv6_sock.bind(sockaddr2)
             TLS_IPv6_sock.listen(10)
             print("Listening on: ", TLS_IPv6_sock.getsockname(), "\n")
-
-            conn, addr = TLS_IPv6_sock.accept()
+            start_new_thread(server_thread, (TLS_IPv6_sock,))
+            # conn, addr = TLS_IPv6_sock.accept()
+            conn, addr = IPv6_sock.accept()
             print('Client Connected: \t\t\t\t', conn.getpeername())
             while True:
                 data = conn.recv(1024).decode('utf8')
