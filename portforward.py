@@ -108,9 +108,9 @@ def create_listening_sockets():
     sockets = []
     for entry in port_forward:
         if entry.ipvtype == "IPv4":
-            sock = socket.socket(AF_INET, SOCK_STREAM)
-            server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                     certfile="cert.pem", keyfile="cert.pem", )
+            server = socket.socket(AF_INET, SOCK_STREAM)
+            # server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+            #                          certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind((configuration['host_address_IPv4'], entry.src_port))
             server.listen(100)
@@ -122,9 +122,9 @@ def create_listening_sockets():
             addrinfo = getaddrinfo(configuration['host_address_IPv6'], entry.src_port, AF_INET6,
                                    SOCK_STREAM, SOL_TCP)
             (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-            sock = socket.socket(family, socktype, proto)
-            server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                     certfile="cert.pem", keyfile="cert.pem", )
+            server = socket.socket(family, socktype, proto)
+            # server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+            #                          certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind(sockaddr)
             server.listen(100)
@@ -214,9 +214,9 @@ def accept_connection(server, client_sockets, epoll):
 def create_forwarding_sockets(entry):
     try:
         if entry.ipvtype == "IPv4":
-            sock = socket.socket(AF_INET, SOCK_STREAM)
-            fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem", )
+            fwd_sock = socket.socket(AF_INET, SOCK_STREAM)
+            # fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+            #                            certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect((entry.fw_ip, entry.fw_port))
             # fwd_sock.setblocking(False) # Prevent SSLWantWriteError, when python context switching
@@ -225,9 +225,9 @@ def create_forwarding_sockets(entry):
             addrinfo = getaddrinfo(entry.fw_ip, entry.fw_port, AF_INET6,
                                    SOCK_STREAM, SOL_TCP)
             (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-            sock = socket.socket(family, socktype, proto)
-            fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem", )
+            fwd_sock = socket.socket(family, socktype, proto)
+            # fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+            #                            certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect(sockaddr)
             # fwd_sock.setblocking(False)
@@ -247,21 +247,20 @@ def receive_handler(sockdes, client_sockets, epoll):
     """
     conn = client_sockets[sockdes].src_sock
     # data = conn.recv(BUFFER_SIZE).decode('utf8')
-    clear_buffer = False
-    data = b''
-    try:
-        data = conn.read(BUFFER_SIZE)
-    except ssl.SSLWantReadError:
-        print("clear")
-        clear_buffer = True
-        pass
-    if clear_buffer:
-        data = conn.read(BUFFER_SIZE)
-
+    data = conn.recv(BUFFER_SIZE)
     sockdes_fwd = client_sockets[sockdes].fwd_sock.fileno()
     # Check if connection still open
+    # print("data recv:", data)
     if data:
         client_sockets[sockdes_fwd].echo_request = data
+        data_len = len(data)
+        fwd_sock = client_sockets[sockdes].fwd_sock
+        if sockdes in client_sockets:
+            client_sockets[sockdes].total_data_forward += data_len  # log
+            clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
+        elif fwd_sock.fileno() in client_sockets:
+            client_sockets[fwd_sock.fileno()].total_data_forward += data_len  # log
+            clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
         epoll.modify(sockdes_fwd, select.EPOLLOUT)
     else:
         print_connection_results(sockdes, client_sockets)
@@ -286,12 +285,6 @@ def send_handler(sockdes, client_sockets, epoll):
     """
     # client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
     client_sockets[sockdes].src_sock.write(client_sockets[sockdes].echo_request)
-    data_len = len(client_sockets[sockdes].echo_request)
-    fwd_sock = client_sockets[sockdes].fwd_sock
-    if sockdes in client_sockets or fwd_sock.fileno() in client_sockets:
-        client_sockets[sockdes].total_data_forward += data_len  # log
-        clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
-
     epoll.modify(sockdes, select.EPOLLIN)
 
 
