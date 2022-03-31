@@ -19,6 +19,7 @@ from _thread import *
 from contextlib import contextmanager
 import socket
 import select
+import ssl
 
 
 class ServerSummary:
@@ -107,7 +108,9 @@ def create_listening_sockets():
     sockets = []
     for entry in port_forward:
         if entry.ipvtype == "IPv4":
-            server = socket.socket(AF_INET, SOCK_STREAM)
+            sock = socket.socket(AF_INET, SOCK_STREAM)
+            server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+                                     certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind((configuration['host_address_IPv4'], entry.src_port))
             server.listen(100)
@@ -119,7 +122,9 @@ def create_listening_sockets():
             addrinfo = getaddrinfo(configuration['host_address_IPv6'], entry.src_port, AF_INET6,
                                    SOCK_STREAM, SOL_TCP)
             (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-            server = socket.socket(family, socktype, proto)
+            sock = socket.socket(family, socktype, proto)
+            server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+                                     certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind(sockaddr)
             server.listen(100)
@@ -209,7 +214,9 @@ def accept_connection(server, client_sockets, epoll):
 def create_forwarding_sockets(entry):
     try:
         if entry.ipvtype == "IPv4":
-            fwd_sock = socket.socket(AF_INET, SOCK_STREAM)
+            sock = socket.socket(AF_INET, SOCK_STREAM)
+            fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+                                       certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect((entry.fw_ip, entry.fw_port))
             fwd_sock.setblocking(False)
@@ -218,7 +225,9 @@ def create_forwarding_sockets(entry):
             addrinfo = getaddrinfo(entry.fw_ip, entry.fw_port, AF_INET6,
                                    SOCK_STREAM, SOL_TCP)
             (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-            fwd_sock = socket.socket(family, socktype, proto)
+            sock = socket.socket(family, socktype, proto)
+            fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
+                                       certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect(sockaddr)
             fwd_sock.setblocking(False)

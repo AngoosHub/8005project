@@ -82,47 +82,47 @@ def start_client():
     echo_string = configuration['echo_string']
 
     try:
-        # IPv4 Socket Echo Request.
-        with socket(AF_INET, SOCK_STREAM) as sock:
-            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            sock.connect((IPv4_HOST, IPv4_PORT))
-            print(f"\nIPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {IPv4_PORT}")
-            client_echo(sock, echo_string)
-
-        # IPv6 Socket Echo Request.
-        addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
-        (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-        with socket(family, socktype, proto) as sock:
-            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            sock.connect(sockaddr)
-            sock_name = sock.getsockname()
-            print(f"\nIPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {IPv6_PORT}")
-            print(sock_name)
-            client_echo(sock, echo_string)
-
-        # # TLS IPv4 Socket Echo Request.
-        # with socket(AF_INET, SOCK_STREAM) as my_sock:
-        #     my_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        #     sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
-        #                            certfile="cert.pem", keyfile="cert.pem", )
-        #
-        #     sock.connect((IPv4_HOST, TLS_IPv4_PORT))
-        #     print(f"\nTLS IPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {TLS_IPv4_PORT}")
+        # # IPv4 Socket Echo Request.
+        # with socket(AF_INET, SOCK_STREAM) as sock:
+        #     sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        #     sock.connect((IPv4_HOST, IPv4_PORT))
+        #     print(f"\nIPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {IPv4_PORT}")
         #     client_echo(sock, echo_string)
         #
-        # # TLS IPv6 Socket Echo Request.
-        # addrinfo = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        # # IPv6 Socket Echo Request.
+        # addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
         # (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
-        # with socket(family, socktype, proto) as my_sock:
+        # with socket(family, socktype, proto) as sock:
         #     sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        #     sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
-        #                            certfile="cert.pem", keyfile="cert.pem", )
-        #
         #     sock.connect(sockaddr)
         #     sock_name = sock.getsockname()
-        #     print(f"\nTLS IPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {TLS_IPv6_PORT}")
+        #     print(f"\nIPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {IPv6_PORT}")
         #     print(sock_name)
         #     client_echo(sock, echo_string)
+
+        # TLS IPv4 Socket Echo Request.
+        with socket(AF_INET, SOCK_STREAM) as my_sock:
+            my_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
+                                   certfile="cert.pem", keyfile="cert.pem", )
+
+            sock.connect((IPv4_HOST, TLS_IPv4_PORT))
+            print(f"\nTLS IPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {TLS_IPv4_PORT}")
+            client_echo(sock, echo_string)
+
+        # TLS IPv6 Socket Echo Request.
+        addrinfo = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+        with socket(family, socktype, proto) as my_sock:
+            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
+                                   certfile="cert.pem", keyfile="cert.pem", )
+
+            sock.connect(sockaddr)
+            sock_name = sock.getsockname()
+            print(f"\nTLS IPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {TLS_IPv6_PORT}")
+            print(sock_name)
+            client_echo(sock, echo_string)
 
     except error as msg:
         print('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
