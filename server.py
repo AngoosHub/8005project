@@ -123,7 +123,6 @@ def start_server():
             print("Listening on: ", TLS_IPv6_sock.getsockname(), "\n")
 
             conn, addr = TLS_IPv6_sock.accept()
-            conn, addr = IPv6_sock.accept()
             print('Client Connected: \t\t\t\t', conn.getpeername())
             while True:
                 data = conn.recv(1024)
