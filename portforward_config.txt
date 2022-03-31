@@ -1,15 +1,14 @@
 # PORT FORWARD CONFIGURATION FILE
 #
-forward_address_IPv4=192.168.12.136
-forward_address_IPv6=fe80::6624:c87c:e9e2:8cc6%wlp1s0
+# ~Host IP Config~
+host_address_IPv4=192.168.1.195
+host_address_IPv6=fe80::1019:5b83:5570:44ff%wlp1s0
 #
-server_address_IPv4=192.168.12.136
-server_address_IPv6=fe80::6624:c87c:e9e2:8cc6%wlp1s0
+# ~Forward IP Config~
+# forward_address_IPv4=192.168.1.195
+# forward_address_IPv6=fe80::1019:5b83:5570:44ff%wlp1s0
 #
-# ~Forward List~
-# {FORWARD_PORT}={SERVER_IP},{SERVER_PORT},{Is_TLS}
-#
-8006=192.168.12.136,8006,Not_TLS
-8007=fe80::6624:c87c:e9e2:8cc6%wlp1s0,8007,Not_TLS
-8008=192.168.12.136,8008,TLS
-8009=fe80::6624:c87c:e9e2:8cc6%wlp1s0,8009,TLS
+# ~Port Forward List~
+# IPvTYPE,Incoming_IP,Incoming_Port,Forward_IP,Forward_Port
+IPv4,192.168.1.195,4000,192.168.1.195,8000
+IPv6,fe80::1019:5b83:5570:44ff%wlp1s0,4000,fe80::1019:5b83:5570:44ff%wlp1s0,8000

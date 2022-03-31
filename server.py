@@ -83,10 +83,11 @@ def start_server():
     TLS_IPv6_PORT = configuration['server_port_TLS_IPv6']
 
     try:
-        addrinfo = getaddrinfo(IPv4_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        print(addrinfo)
         (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
 
-        addrinfo2 = getaddrinfo(IPv4_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
+        addrinfo2 = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
         (family2, socktype2, proto2, canonname2, sockaddr2) = addrinfo2[0]
 
         with socket(AF_INET, SOCK_STREAM) as IPv4_sock, \

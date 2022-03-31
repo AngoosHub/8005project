@@ -42,16 +42,26 @@ class ClientSocketInfo:
         self.echo_request = ''
         self.total_data_forward = 0
 
+
 class PortForward:
     """
     Holds information for a port forward entry of IP:Port -> IP:Port.
     """
 
-    def __init__(self, src_ip, src_port, fw_ip, fw_port):
+    def __init__(self, ipvtype, src_ip, src_port, fw_ip, fw_port):
+        self.ipvtype = ipvtype
         self.src_ip = src_ip
-        self.src_port = src_port
+        try:
+            self.src_port = int(src_port)
+        except ValueError:
+            print(f"Port numbers must be integers. '{src_port}' is invalid.")
+            exit()
         self.fw_ip = fw_ip
-        self.fw_port = fw_port
+        try:
+            self.fw_port = int(fw_port)
+        except ValueError:
+            print(f"Port numbers must be integers.'{fw_port}' is invalid.")
+            exit()
 
 
 LOG_PATH = "server_log.txt"
@@ -59,13 +69,14 @@ CONFIGURATION_PATH = "portforward_config.txt"
 BUFFER_SIZE = 1024
 clients_summary = {}
 configuration = {
-    'server_address': '',
-    'server_port': '',
-    'server_listen_backlog': 0
+    'host_address_IPv4': '',
+    'host_address_IPv6': '',
 }
-port_forward = {
 
-}
+port_forward = []
+
+# TLS_IPv4_sock = ssl.wrap_socket(sock1, ssl_version=ssl.PROTOCOL_TLS,
+#                                        certfile="cert.pem", keyfile="cert.pem",)
 
 def read_configuration():
     """
@@ -78,23 +89,45 @@ def read_configuration():
             if line.isspace() or line.startswith('#'):
                 continue
 
-            config_data = line.split('=')
-            if config_data[0] in configuration:
-                if config_data[0] == 'server_address':
-                    configuration[config_data[0]] = config_data[1]
-                else:
-                    data = config_data[1]
-                    if data.isdigit():
-                        configuration[config_data[0]] = int(config_data[1])
-                    else:
-                        print("Invalid configuration, config other than server address should be integers.")
-                        exit()
+            if line.startswith('host_address_IPv4') or line.startswith('host_address_IPv6'):
+                config_data = line.split('=')
+                configuration[config_data[0]] = config_data[1]
+
+            elif line.startswith('IPv4') or line.startswith('IPv6'):
+                config_data = line.split(',')
+                pf_entry = PortForward(*config_data)
+                port_forward.append(pf_entry)
+            else:
+                print(f"Invalid configuration, following line with incorrect format: {line}")
+                exit()
 
 
-def create_listening_socket():
-    print()
-    # addrinfo = getaddrinfo(IPv6_HOST, IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
-    # (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+def create_listening_sockets():
+    sockets = []
+    for entry in port_forward:
+        if entry.ipvtype == "IPv4":
+            server = socket.socket(AF_INET, SOCK_STREAM)
+            server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            server.bind((configuration['host_address_IPv4'], entry.src_port))
+            server.listen(100)
+            server.setblocking(False)
+            server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            print(f"Listening on : {server.getsockname()}")
+            sockets.append(server)
+        elif entry.ipvtype == "IPv6":
+            addrinfo = getaddrinfo(configuration['host_address_IPv6'], entry.src_port, AF_INET6,
+                                   SOCK_STREAM, SOL_TCP)
+            (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+            server = socket.socket(family, socktype, proto)
+            server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            server.bind(sockaddr)
+            server.listen(100)
+            server.setblocking(False)
+            server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            print(f"Listening on : {server.getsockname()}")
+            sockets.append(server)
+
+    return sockets
 
 
 def start_epoll_server():
@@ -112,28 +145,18 @@ def start_epoll_server():
 
     :return: None
     """
+    sockets = create_listening_sockets()
     # For loop for sockets, pass to epoll. change epoll to accept list of sockets for registering
-    with socket_context_manager(AF_INET, SOCK_STREAM) as server, epoll_context_manager(server.fileno(),
-                                                                                       select.EPOLLIN) as epoll:
-
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow multiple bindings to port
-
-        server.bind((configuration['server_address'], configuration['server_port']))
-        server.listen(configuration['server_listen_backlog'])
-
-        server.setblocking(False)
-        server.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Set socket to non-blocking options
-        print(f"Listening on Port: {configuration['server_port']}")
+    with epoll_context_manager(sockets, select.EPOLLIN) as epoll:
 
         client_sockets = {}
-
         while True:
             events = epoll.poll(1)
 
             for sockdes, event in events:
                 # If event is from epoll server listening socket, accept client connection.
-                if sockdes == server.fileno():
-                    accept_connection(server, client_sockets, epoll)
+                if any(s.fileno() == sockdes for s in sockets):
+                    next(accept_connection(s, client_sockets, epoll) for s in sockets if s.fileno() == sockdes)
 
                 # If event is socket available to read (client echo request), receive message.
                 elif event & select.EPOLLIN:
@@ -154,8 +177,11 @@ def accept_connection(server, client_sockets, epoll):
     """
     connection, address = server.accept()
     connection.setblocking(0)
-
-    print(f'Client {connection.fileno()} Connected: {address}')  # print client IP
+    print(address)
+    print(connection.getpeername())
+    print(connection.getsockname())
+    exit()
+    print(f'Client Connected: {address}. Forwarding from ')  # print client IP
     ip_address = address[0]
     if ip_address not in clients_summary:
         clients_summary[ip_address] = ServerSummary(ip_address)
@@ -246,21 +272,24 @@ def print_connection_results(sockdes, client_sockets):
 
 
 @contextmanager
-def epoll_context_manager(*args, **kwargs):
+def epoll_context_manager(sockets, epoll_option):
     """
     Epoll loop Context manager, use context manager to free epoll resources upon termination.
-    :param args: Epoll server args
-    :param kwargs: Epoll server options
+    :param sockets: List of sockets for Epoll server args
+    :param epoll_option: Epoll server options
     :return:
     """
     eps = select.epoll()
-    eps.register(*args, **kwargs)
+    for sock in sockets:
+        eps.register(sock.fileno(), epoll_option)
     try:
         yield eps
     finally:
         print_summary()
         print("\nExiting epoll loop")
-        eps.unregister(args[0])
+        for sock in sockets:
+            eps.unregister(sock.fileno())
+            sock.close()
         eps.close()
 
 
