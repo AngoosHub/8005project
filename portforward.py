@@ -41,7 +41,7 @@ class ClientSocketInfo:
     def __init__(self, src_sock, fwd_sock):
         self.src_sock = src_sock
         self.fwd_sock = fwd_sock
-        self.echo_request = b''
+        self.echo_request = ''
         self.total_data_forward = 0
 
 
@@ -219,7 +219,7 @@ def create_forwarding_sockets(entry):
                                        certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect((entry.fw_ip, entry.fw_port))
-            fwd_sock.setblocking(False)
+            # fwd_sock.setblocking(False) # Prevent SSLWantWriteError, when python context switching
             fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         else:  # For IPv6
             addrinfo = getaddrinfo(entry.fw_ip, entry.fw_port, AF_INET6,
@@ -230,7 +230,7 @@ def create_forwarding_sockets(entry):
                                        certfile="cert.pem", keyfile="cert.pem", )
             fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             fwd_sock.connect(sockaddr)
-            fwd_sock.setblocking(False)
+            # fwd_sock.setblocking(False)
             fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         return fwd_sock
     except error as msg:
@@ -247,7 +247,17 @@ def receive_handler(sockdes, client_sockets, epoll):
     """
     conn = client_sockets[sockdes].src_sock
     # data = conn.recv(BUFFER_SIZE).decode('utf8')
-    data = conn.recv(BUFFER_SIZE).decode('utf8')
+    clear_buffer = False
+    data = b''
+    try:
+        data = conn.read(BUFFER_SIZE)
+    except ssl.SSLWantReadError:
+        print("clear")
+        clear_buffer = True
+        pass
+    if clear_buffer:
+        data = conn.read(BUFFER_SIZE)
+
     sockdes_fwd = client_sockets[sockdes].fwd_sock.fileno()
     # Check if connection still open
     if data:
@@ -275,7 +285,7 @@ def send_handler(sockdes, client_sockets, epoll):
     :return: None
     """
     # client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
-    client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
+    client_sockets[sockdes].src_sock.write(client_sockets[sockdes].echo_request)
     data_len = len(client_sockets[sockdes].echo_request)
     fwd_sock = client_sockets[sockdes].fwd_sock
     if sockdes in client_sockets or fwd_sock.fileno() in client_sockets:
