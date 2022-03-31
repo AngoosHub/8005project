@@ -105,24 +105,25 @@ def start_server():
             IPv6_sock.bind(sockaddr)
             IPv6_sock.listen(10)
             print("Listening on: ", IPv6_sock.getsockname())
-            start_new_thread(server_thread, (IPv6_sock,))
+            # start_new_thread(server_thread, (IPv6_sock,))
+            #
+            # sock1.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            # TLS_IPv4_sock = ssl.wrap_socket(sock1, ssl_version=ssl.PROTOCOL_TLS,
+            #                            certfile="cert.pem", keyfile="cert.pem",)
+            # TLS_IPv4_sock.bind((IPv4_HOST, TLS_IPv4_PORT))
+            # TLS_IPv4_sock.listen(10)
+            # print("Listening on: ", TLS_IPv4_sock.getsockname())
+            # start_new_thread(server_thread, (TLS_IPv4_sock,))
+            #
+            # sock2.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            # TLS_IPv6_sock = ssl.wrap_socket(sock2, ssl_version=ssl.PROTOCOL_TLS,
+            #                            certfile="cert.pem", keyfile="cert.pem", )
+            # TLS_IPv6_sock.bind(sockaddr2)
+            # TLS_IPv6_sock.listen(10)
+            # print("Listening on: ", TLS_IPv6_sock.getsockname(), "\n")
 
-            sock1.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            TLS_IPv4_sock = ssl.wrap_socket(sock1, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem",)
-            TLS_IPv4_sock.bind((IPv4_HOST, TLS_IPv4_PORT))
-            TLS_IPv4_sock.listen(10)
-            print("Listening on: ", TLS_IPv4_sock.getsockname())
-            start_new_thread(server_thread, (TLS_IPv4_sock,))
-
-            sock2.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            TLS_IPv6_sock = ssl.wrap_socket(sock2, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem", )
-            TLS_IPv6_sock.bind(sockaddr2)
-            TLS_IPv6_sock.listen(10)
-            print("Listening on: ", TLS_IPv6_sock.getsockname(), "\n")
-
-            conn, addr = TLS_IPv6_sock.accept()
+            # conn, addr = TLS_IPv6_sock.accept()
+            conn, addr = IPv6_sock.accept()
             print('Client Connected: \t\t\t\t', conn.getpeername())
             while True:
                 data = conn.recv(1024)

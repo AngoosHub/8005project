@@ -37,8 +37,9 @@ class ClientSocketInfo:
     Holds varies statistics of individual client connections for further processing and to log.
     """
 
-    def __init__(self, sock):
-        self.sock = sock
+    def __init__(self, src_sock, fwd_sock):
+        self.sock = src_sock
+        self.fwd_sock = fwd_sock
         self.echo_request = ''
         self.total_data_forward = 0
 
@@ -177,21 +178,57 @@ def accept_connection(server, client_sockets, epoll):
     """
     connection, address = server.accept()
     connection.setblocking(0)
-    print(address)
-    print(connection.getpeername())
-    print(connection.getsockname())
-    exit()
-    print(f'Client Connected: {address}. Forwarding from ')  # print client IP
-    ip_address = address[0]
-    if ip_address not in clients_summary:
-        clients_summary[ip_address] = ServerSummary(ip_address)
+    # print(address)  # ('192.168.1.180', 34742)
+    # print(connection.getpeername())  # ('192.168.1.180', 34742)
+    # print(connection.getsockname())  # ('192.168.1.195', 4000)
 
-    clients_summary[ip_address].total_client_conns += 1
+    for pf in port_forward:
+        if pf.src_ip == connection.getpeername()[0] and pf.src_port == connection.getsockname()[1]:
+            fwd_sock = create_forwarding_sockets(pf)
 
-    client_sock_info = ClientSocketInfo(connection)
-    fd = connection.fileno()
-    epoll.register(fd, select.EPOLLIN)
-    client_sockets[fd] = client_sock_info
+            print(f'Client Connected: {address}.'
+                  f'\n    Forwarding from Port {connection.getsockname()[1]} to '
+                  f'\n    IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}')
+
+            ip_address = address[0]
+            if ip_address not in clients_summary:
+                clients_summary[ip_address] = ServerSummary(ip_address)
+
+            clients_summary[ip_address].total_client_conns += 1
+
+            client_sock_info = ClientSocketInfo(connection, fwd_sock)
+            client_sock_info_fwd = ClientSocketInfo(fwd_sock, connection)
+            fd = connection.fileno()
+            fd_fwd = fwd_sock.fileno()
+            epoll.register(fd, select.EPOLLIN)
+            epoll.register(fd_fwd, select.EPOLLIN)
+            client_sockets[fd] = client_sock_info
+            client_sockets[fd_fwd] = client_sock_info_fwd
+        else:
+            print(f"No matching Port Forward Entry for {address}, closing connection.")
+            connection.close()
+
+
+def create_forwarding_sockets(entry):
+    try:
+        if entry.ipvtype == "IPv4":
+            fwd_sock = socket.socket(AF_INET, SOCK_STREAM)
+            fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            fwd_sock.connect((entry.fw_ip, entry.fw_port))
+            fwd_sock.setblocking(False)
+            fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        else:  # For IPv6
+            addrinfo = getaddrinfo(entry.fw_ip, entry.fw_port, AF_INET6,
+                                   SOCK_STREAM, SOL_TCP)
+            (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
+            fwd_sock = socket.socket(family, socktype, proto)
+            fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            fwd_sock.connect(sockaddr)
+            fwd_sock.setblocking(False)
+            fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        return fwd_sock
+    except error as msg:
+        print('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
 
 
 def receive_handler(sockdes, client_sockets, epoll):
@@ -202,17 +239,23 @@ def receive_handler(sockdes, client_sockets, epoll):
     :param epoll: epoll reference
     :return: None
     """
-    conn = client_sockets[sockdes].sock
+    conn = client_sockets[sockdes].src_sock
     data = conn.recv(BUFFER_SIZE).decode('utf-8')
+    sockdes_fwd = client_sockets[sockdes].fwd_sock.fileno()
     # Check if connection still open
     if data:
-        client_sockets[sockdes].echo_request = data
-        epoll.modify(sockdes, select.EPOLLOUT)
+        client_sockets[sockdes_fwd].echo_request = data
+        epoll.modify(sockdes_fwd, select.EPOLLOUT)
     else:
         print_connection_results(sockdes, client_sockets)
         epoll.unregister(sockdes)
-        client_sockets[sockdes].sock.close()
+        epoll.unregister(sockdes_fwd)
+        client_sockets[sockdes].src_sock.close()
+        client_sockets[sockdes].fwd_sock.close()
+        client_sockets[sockdes_fwd].src_sock.close()
+        client_sockets[sockdes_fwd].fwd_sock.close()
         del client_sockets[sockdes]
+        del client_sockets[sockdes_fwd]
         return
 
 
@@ -224,10 +267,13 @@ def send_handler(sockdes, client_sockets, epoll):
     :param epoll: epoll reference
     :return: None
     """
-    client_sockets[sockdes].sock.send(client_sockets[sockdes].echo_request.encode('utf-8'))
+    client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf-8'))
     data_len = len(client_sockets[sockdes].echo_request)
-    clients_summary[client_sockets[sockdes].sock.getpeername()[0]].total_data_forward += data_len  # log
-    client_sockets[sockdes].total_data_forward += data_len
+    fwd_sock = client_sockets[sockdes].fwd_sock
+    if sockdes in client_sockets or fwd_sock.fileno() in client_sockets:
+        client_sockets[sockdes].total_data_forward += data_len  # log
+        clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
+
     epoll.modify(sockdes, select.EPOLLIN)
 
 
@@ -263,7 +309,7 @@ def print_connection_results(sockdes, client_sockets):
     :return: None
     """
     log_data = (
-        f"[{client_sockets[sockdes].sock.getpeername()}] Connection closed, results:\n"
+        f"[{client_sockets[sockdes].src_sock.getpeername()}] Connection closed, results:\n"
         f"    Total data forward = {client_sockets[sockdes].total_data_forward}\n"
     )
     print(log_data)
