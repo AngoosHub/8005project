@@ -38,7 +38,7 @@ class ClientSocketInfo:
     """
 
     def __init__(self, src_sock, fwd_sock):
-        self.sock = src_sock
+        self.src_sock = src_sock
         self.fwd_sock = fwd_sock
         self.echo_request = ''
         self.total_data_forward = 0
@@ -178,17 +178,13 @@ def accept_connection(server, client_sockets, epoll):
     """
     connection, address = server.accept()
     connection.setblocking(0)
-    # print(address)  # ('192.168.1.180', 34742)
-    # print(connection.getpeername())  # ('192.168.1.180', 34742)
-    # print(connection.getsockname())  # ('192.168.1.195', 4000)
 
     for pf in port_forward:
-        if pf.src_ip == connection.getpeername()[0] and pf.src_port == connection.getsockname()[1]:
+        if connection.getpeername()[0] in pf.src_ip and connection.getsockname()[1] == pf.src_port:
             fwd_sock = create_forwarding_sockets(pf)
 
-            print(f'Client Connected: {address}.'
-                  f'\n    Forwarding from Port {connection.getsockname()[1]} to '
-                  f'\n    IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}')
+            print(f'Client Connected from {address} to Port: {connection.getsockname()[1]}.\n'
+                  f'    Forwarding to IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}.\n')
 
             ip_address = address[0]
             if ip_address not in clients_summary:
@@ -204,9 +200,10 @@ def accept_connection(server, client_sockets, epoll):
             epoll.register(fd_fwd, select.EPOLLIN)
             client_sockets[fd] = client_sock_info
             client_sockets[fd_fwd] = client_sock_info_fwd
-        else:
-            print(f"No matching Port Forward Entry for {address}, closing connection.")
-            connection.close()
+            return
+
+    print(f"No matching Port Forward Entry for {address}, closing connection.")
+    connection.close()
 
 
 def create_forwarding_sockets(entry):
@@ -309,7 +306,7 @@ def print_connection_results(sockdes, client_sockets):
     :return: None
     """
     log_data = (
-        f"[{client_sockets[sockdes].src_sock.getpeername()}] Connection closed, results:\n"
+        f"Connection closed: {client_sockets[sockdes].src_sock.getpeername()}\n"
         f"    Total data forward = {client_sockets[sockdes].total_data_forward}\n"
     )
     print(log_data)
