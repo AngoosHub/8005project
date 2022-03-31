@@ -125,11 +125,11 @@ def start_server():
             conn, addr = TLS_IPv6_sock.accept()
             print('Client Connected: \t\t\t\t', conn.getpeername())
             while True:
-                data = conn.recv(1024)
+                data = conn.recv(1024).decode('utf8')
                 if data:
-                    print(conn.getpeername(), ' Sent:', data.decode('utf8'))
-                    print("Server echoing: \t\t\t\t", data.decode('utf8'))
-                    conn.sendall(data)
+                    print(conn.getpeername(), ' Sent:', data)
+                    print("Server echoing: \t\t\t\t", data)
+                    conn.sendall(data.encode('utf8'))
                 else:
                     print('Closed Connection: \t\t\t\t', conn.getpeername())
                     conn.close()
