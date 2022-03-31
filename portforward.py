@@ -41,7 +41,7 @@ class ClientSocketInfo:
     def __init__(self, src_sock, fwd_sock):
         self.src_sock = src_sock
         self.fwd_sock = fwd_sock
-        self.echo_request = ''
+        self.echo_request = b''
         self.total_data_forward = 0
 
 
@@ -246,7 +246,8 @@ def receive_handler(sockdes, client_sockets, epoll):
     :return: None
     """
     conn = client_sockets[sockdes].src_sock
-    data = conn.recv(BUFFER_SIZE).decode('utf-8')
+    # data = conn.recv(BUFFER_SIZE).decode('utf8')
+    data = conn.recv(BUFFER_SIZE).decode('utf8')
     sockdes_fwd = client_sockets[sockdes].fwd_sock.fileno()
     # Check if connection still open
     if data:
@@ -273,7 +274,8 @@ def send_handler(sockdes, client_sockets, epoll):
     :param epoll: epoll reference
     :return: None
     """
-    client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf-8'))
+    # client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
+    client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
     data_len = len(client_sockets[sockdes].echo_request)
     fwd_sock = client_sockets[sockdes].fwd_sock
     if sockdes in client_sockets or fwd_sock.fileno() in client_sockets:
