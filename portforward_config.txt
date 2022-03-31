@@ -10,5 +10,5 @@ host_address_IPv6=fe80::1019:5b83:5570:44ff%wlp1s0
 #
 # ~Port Forward List~
 # IPvTYPE,Incoming_IP,Incoming_Port,Forward_IP,Forward_Port
-IPv4,192.168.1.195,4000,192.168.1.195,8000
-IPv6,fe80::1019:5b83:5570:44ff%wlp1s0,4000,fe80::1019:5b83:5570:44ff%wlp1s0,8000
+IPv4,192.168.1.180,4000,192.168.1.180,8000
+IPv6,fe80::67:7812:6c18:a9cf%wlp1s0,4000,fe80::67:7812:6c18:a9cf%wlp1s0,8000
