@@ -1,5 +1,15 @@
 # PORT FORWARD CONFIGURATION FILE
 #
-server_address=192.168.1.180
-server_port=8006
-server_listen_backlog=100
+forward_address_IPv4=192.168.12.136
+forward_address_IPv6=fe80::6624:c87c:e9e2:8cc6%wlp1s0
+#
+server_address_IPv4=192.168.12.136
+server_address_IPv6=fe80::6624:c87c:e9e2:8cc6%wlp1s0
+#
+# ~Forward List~
+# {FORWARD_PORT}={SERVER_IP},{SERVER_PORT},{Is_TLS}
+#
+8006=192.168.12.136,8006,Not_TLS
+8007=fe80::6624:c87c:e9e2:8cc6%wlp1s0,8007,Not_TLS
+8008=192.168.12.136,8008,TLS
+8009=fe80::6624:c87c:e9e2:8cc6%wlp1s0,8009,TLS
