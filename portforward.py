@@ -68,7 +68,7 @@ class PortForward:
 
 LOG_PATH = "server_log.txt"
 CONFIGURATION_PATH = "portforward_config.txt"
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 4096
 clients_summary = {}
 configuration = {
     'host_address_IPv4': '',
@@ -255,12 +255,12 @@ def receive_handler(sockdes, client_sockets, epoll):
         client_sockets[sockdes_fwd].echo_request = data
         data_len = len(data)
         fwd_sock = client_sockets[sockdes].fwd_sock
-        if sockdes in client_sockets:
-            client_sockets[sockdes].total_data_forward += data_len  # log
-            clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
-        elif fwd_sock.fileno() in client_sockets:
-            client_sockets[fwd_sock.fileno()].total_data_forward += data_len  # log
-            clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
+        # if sockdes in client_sockets:
+        #     client_sockets[sockdes].total_data_forward += data_len  # log
+        #     clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
+        # elif fwd_sock.fileno() in client_sockets:
+        #     client_sockets[fwd_sock.fileno()].total_data_forward += data_len  # log
+        #     clients_summary[client_sockets[sockdes].src_sock.getpeername()[0]].total_data_forward += data_len  # log
         epoll.modify(sockdes_fwd, select.EPOLLOUT)
     else:
         print_connection_results(sockdes, client_sockets)
