@@ -69,7 +69,7 @@ class PortForward:
         else:
             self.is_tls = False
 
-LOG_PATH = "server_log.txt"
+LOG_PATH = "portforward_log.txt"
 CONFIGURATION_PATH = "portforward_config.txt"
 BUFFER_SIZE = 4096
 clients_summary = {}
@@ -77,11 +77,8 @@ configuration = {
     'host_address_IPv4': '',
     'host_address_IPv6': '',
 }
-
 port_forward = []
 
-# TLS_IPv4_sock = ssl.wrap_socket(sock1, ssl_version=ssl.PROTOCOL_TLS,
-#                                        certfile="cert.pem", keyfile="cert.pem",)
 
 def read_configuration():
     """
@@ -114,7 +111,7 @@ def create_listening_sockets():
             if entry.ipvtype == "IPv4":
                 sock = socket.socket(AF_INET, SOCK_STREAM)
                 server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                         certfile="cert.pem", keyfile="cert.pem", )
+                                         certfile="cert.pem", keyfile="priv.key", )
                 server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
                 server.bind((configuration['host_address_IPv4'], entry.src_port))
                 server.listen(10)
@@ -127,7 +124,7 @@ def create_listening_sockets():
                 (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
                 sock = socket.socket(family, socktype, proto)
                 server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                         certfile="cert.pem", keyfile="cert.pem", )
+                                         certfile="cert.pem", keyfile="priv.key", )
                 server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
                 server.bind(sockaddr)
                 server.listen(10)
@@ -138,8 +135,6 @@ def create_listening_sockets():
 
         if entry.ipvtype == "IPv4":
             server = socket.socket(AF_INET, SOCK_STREAM)
-            # server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-            #                          certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind((configuration['host_address_IPv4'], entry.src_port))
             server.listen(100)
@@ -152,8 +147,6 @@ def create_listening_sockets():
                                    SOCK_STREAM, SOL_TCP)
             (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
             server = socket.socket(family, socktype, proto)
-            # server = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-            #                          certfile="cert.pem", keyfile="cert.pem", )
             server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             server.bind(sockaddr)
             server.listen(100)
@@ -217,8 +210,9 @@ def accept_connection(server, client_sockets, epoll):
         if connection.getpeername()[0] in pf.src_ip and connection.getsockname()[1] == pf.src_port:
             fwd_sock = create_forwarding_sockets(pf)
 
-            print(f'Client Connected from {address} to Port: {connection.getsockname()[1]}.\n'
-                  f'    Forwarding to IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}.\n')
+            print(f'Client Connected from IP: {connection.getpeername()[0]}, Port: {connection.getpeername()[1]} \n'
+                  f'                   to IP: {connection.getsockname()[0]} Port: {connection.getsockname()[1]}.\n'
+                  f'        Forwarding to IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}.\n')
 
             ip_address = address[0]
             if ip_address not in clients_summary:
@@ -327,7 +321,7 @@ def start_TLS_server(server):
                     if entry.ipvtype == "IPv4":
                         sock = socket.socket(AF_INET, SOCK_STREAM)
                         fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                                   certfile="cert.pem", keyfile="cert.pem", )
+                                                   certfile="cert.pem", keyfile="priv.key", )
                         fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
                         fwd_sock.connect((entry.fw_ip, entry.fw_port))
                         fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -337,12 +331,20 @@ def start_TLS_server(server):
                         (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
                         sock = socket.socket(family, socktype, proto)
                         fwd_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS,
-                                                   certfile="cert.pem", keyfile="cert.pem", )
+                                                   certfile="cert.pem", keyfile="priv.key", )
                         fwd_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
                         fwd_sock.connect(sockaddr)
                         fwd_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                    print(f'Client Connected from {adr} to Port: {conn.getsockname()[1]}.\n'
-                          f'    Forwarding to IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}.\n')
+                    print(f'Client Connected from IP: {conn.getpeername()[0]}, Port: {conn.getpeername()[1]} \n'
+                          f'                   to IP: {conn.getsockname()[0]}, Port: {conn.getsockname()[1]}.\n'
+                          f'        Forwarding to IP: {fwd_sock.getpeername()[0]}, Port: {fwd_sock.getpeername()[1]}.\n')
+
+                    ip_address = adr[0]
+                    if ip_address not in clients_summary:
+                        clients_summary[ip_address] = ServerSummary(ip_address)
+
+                    clients_summary[ip_address].total_client_conns += 1
+
                     start_new_thread(TLS_thread, (conn, fwd_sock,))
                     # start_new_thread(TLS_thread, (fwd_sock, conn,))
                     accept_success = True
@@ -363,6 +365,7 @@ def TLS_thread(sock, fwd_sock):
             total_data += len(data)
             fwd_sock.send(data)
         else:
+            clients_summary[sock.getpeername()[0]].total_data_forward += total_data  # log
             log_data = (
                 f"Connection closed: {sock.getpeername()}\n"
                 f"    Total data forward = {total_data}\n"

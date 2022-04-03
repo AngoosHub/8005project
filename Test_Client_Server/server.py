@@ -18,8 +18,8 @@ from _thread import *
 import ssl
 
 
-LOG_PATH = "server_log.txt"
-CONFIGURATION_PATH = "server_configuration.txt"
+LOG_PATH = "Test_Client_Server/server_log.txt"
+CONFIGURATION_PATH = "Test_Client_Server/server_configuration.txt"
 
 
 def read_configuration():
@@ -109,7 +109,7 @@ def start_server():
 
             sock1.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             TLS_IPv4_sock = ssl.wrap_socket(sock1, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem",)
+                                            certfile="Test_Client_Server/cert.pem", keyfile="Test_Client_Server/priv.key",)
             TLS_IPv4_sock.bind((IPv4_HOST, TLS_IPv4_PORT))
             TLS_IPv4_sock.listen(10)
             print("Listening on: ", TLS_IPv4_sock.getsockname())
@@ -117,7 +117,7 @@ def start_server():
 
             sock2.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             TLS_IPv6_sock = ssl.wrap_socket(sock2, ssl_version=ssl.PROTOCOL_TLS,
-                                       certfile="cert.pem", keyfile="cert.pem", )
+                                            certfile="Test_Client_Server/cert.pem", keyfile="Test_Client_Server/priv.key", )
             TLS_IPv6_sock.bind(sockaddr2)
             TLS_IPv6_sock.listen(10)
             print("Listening on: ", TLS_IPv6_sock.getsockname(), "\n")
