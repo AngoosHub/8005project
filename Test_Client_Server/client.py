@@ -19,8 +19,8 @@ from socket import *
 from _thread import *
 import ssl
 
-LOG_PATH = "client_log.txt"
-CONFIGURATION_PATH = "client_configuration.txt"
+LOG_PATH = "Test_Client_Server/client_log.txt"
+CONFIGURATION_PATH = "Test_Client_Server/client_configuration.txt"
 
 
 def read_configuration():
@@ -60,11 +60,12 @@ def read_configuration():
 
 
 def client_echo(conn, echo):
-    conn.write(echo.encode('utf8'))
-    print("Sending String to Server: \t", echo)
-    data = conn.read(1024)
-    if data:
-        print("Reply from Server: \t\t\t", data.decode('utf8'))
+    for x in range(100):
+        conn.sendall(echo.encode('utf8'))
+        print("Sending String to Server: \t", echo)
+        data = conn.recv(1024)
+        if data:
+            print("Reply from Server: \t\t\t", data.decode('utf8'))
 
 
 def start_client():
@@ -104,25 +105,27 @@ def start_client():
         with socket(AF_INET, SOCK_STREAM) as my_sock:
             my_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
-                                   certfile="cert.pem", keyfile="cert.pem", )
+                                   certfile="Test_Client_Server/cert.pem", keyfile="Test_Client_Server/priv.key", )
 
             sock.connect((IPv4_HOST, TLS_IPv4_PORT))
             print(f"\nTLS IPv4 connection to Server:\t IP = {IPv4_HOST}, Port = {TLS_IPv4_PORT}")
             client_echo(sock, echo_string)
+            sock.close()
 
         # TLS IPv6 Socket Echo Request.
         addrinfo = getaddrinfo(IPv6_HOST, TLS_IPv6_PORT, AF_INET6, SOCK_STREAM, SOL_TCP)
         (family, socktype, proto, canonname, sockaddr) = addrinfo[0]
         with socket(family, socktype, proto) as my_sock:
-            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            my_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             sock = ssl.wrap_socket(my_sock, ssl_version=ssl.PROTOCOL_TLS,
-                                   certfile="cert.pem", keyfile="cert.pem", )
+                                   certfile="Test_Client_Server/cert.pem", keyfile="Test_Client_Server/priv.key", )
 
             sock.connect(sockaddr)
             sock_name = sock.getsockname()
             print(f"\nTLS IPv6 connection to Server:\t IP = {IPv6_HOST}, Port = {TLS_IPv6_PORT}")
             print(sock_name)
             client_echo(sock, echo_string)
+            sock.close()
 
     except error as msg:
         print('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
