@@ -4,16 +4,12 @@
 host_address_IPv4=192.168.12.136
 host_address_IPv6=fe80::6624:c87c:e9e2:8cc6%wlp1s0
 #
-# ~Forward IP Config~
-# forward_address_IPv4=192.168.1.195
-# forward_address_IPv6=fe80::1019:5b83:5570:44ff%wlp1s0
-#
 # ~Port Forward List~
-# IPvTYPE,Incoming_IP,Incoming_Port,Forward_IP,Forward_Port
-#IPv4,192.168.12.115,7000,192.168.12.105,8000,TLS
-#IPv6,fe80::876:4cd5:19bf:8d17%en0,7000,fe80::c9c0:c371:34fd:a435%wlp1s0,8000,TLS
-IPv4,192.168.12.136,7000,192.168.12.136,8000,TLS
-IPv6,fe80::6624:c87c:e9e2:8cc6%wlp1s0,7000,fe80::6624:c87c:e9e2:8cc6%wlp1s0,8000,TLS
+# IPvTYPE,Incoming_IP,Incoming_Port,Forward_IP,Forward_Port,TLS
+IPv4,192.168.12.115,7000,192.168.12.105,8000,TLS
+IPv6,fe80::876:4cd5:19bf:8d17%en0,7000,fe80::c9c0:c371:34fd:a435%wlp1s0,8000,TLS
+#IPv4,192.168.12.136,7000,192.168.12.136,8000,TLS
+#IPv6,fe80::6624:c87c:e9e2:8cc6%wlp1s0,7000,fe80::6624:c87c:e9e2:8cc6%wlp1s0,8000,TLS
 #
 # (HTTP)
 IPv4,192.168.12.115,80,192.168.12.105,80,non-TLS
