@@ -13,7 +13,9 @@ portforward.py
     two-way traffic.
 ----------------------------------------------------------------------------------------------------
 """
+import resource
 import time
+from resource import setrlimit
 from socket import *
 from _thread import *
 from contextlib import contextmanager
@@ -102,6 +104,7 @@ def read_configuration():
             else:
                 print(f"Invalid configuration, following line with incorrect format: {line}")
                 exit()
+    setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 
 def create_listening_sockets():
