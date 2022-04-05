@@ -267,7 +267,11 @@ def receive_handler(sockdes, client_sockets, epoll):
     :param epoll: epoll reference
     :return: None
     """
-    conn = client_sockets[sockdes].src_sock
+    try:
+        conn = client_sockets[sockdes].src_sock
+    except KeyError:
+        print("Client closed socket")
+        return
     # data = conn.recv(BUFFER_SIZE).decode('utf8')
     data = conn.recv(BUFFER_SIZE)
     sockdes_fwd = client_sockets[sockdes].fwd_sock.fileno()
@@ -289,15 +293,19 @@ def receive_handler(sockdes, client_sockets, epoll):
                 .total_data_forward += data_len  # log
         epoll.modify(sockdes_fwd, select.EPOLLOUT)
     else:
-        print_connection_results(sockdes, client_sockets)
-        epoll.unregister(sockdes)
-        epoll.unregister(sockdes_fwd)
-        client_sockets[sockdes].src_sock.close()
-        client_sockets[sockdes].fwd_sock.close()
-        client_sockets[sockdes_fwd].src_sock.close()
-        client_sockets[sockdes_fwd].fwd_sock.close()
-        del client_sockets[sockdes]
-        del client_sockets[sockdes_fwd]
+        try:
+            print_connection_results(sockdes, client_sockets)
+            epoll.unregister(sockdes)
+            epoll.unregister(sockdes_fwd)
+            client_sockets[sockdes].src_sock.close()
+            client_sockets[sockdes].fwd_sock.close()
+            client_sockets[sockdes_fwd].src_sock.close()
+            client_sockets[sockdes_fwd].fwd_sock.close()
+            del client_sockets[sockdes]
+            del client_sockets[sockdes_fwd]
+        except KeyError:
+            print("Client closed socket")
+            return
         return
 
 
@@ -310,8 +318,12 @@ def send_handler(sockdes, client_sockets, epoll):
     :return: None
     """
     # client_sockets[sockdes].src_sock.send(client_sockets[sockdes].echo_request.encode('utf8'))
-    client_sockets[sockdes].src_sock.sendall(client_sockets[sockdes].echo_request)
-    epoll.modify(sockdes, select.EPOLLIN)
+    try:
+        client_sockets[sockdes].src_sock.sendall(client_sockets[sockdes].echo_request)
+        epoll.modify(sockdes, select.EPOLLIN)
+    except KeyError:
+        print("Server closed connection")
+        return
 
 
 def start_TLS_server(server):
